@@ -29,3 +29,5 @@ ai-big	ollama	huihui_ai/gpt-oss-abliterated:120b	-	87000000000	-
 # --- coding: offline coding helpers
 coding	ollama	qwen3-coder:30b	-	18000000000	-
 coding	ollama	qwen3-coder-next:latest	-	51000000000	-
+# --- vibe: offline vibe coding (aider, Apache 2.0) using the local coding models
+vibe	app	aider	aider-chat	600000000	-

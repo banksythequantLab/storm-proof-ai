@@ -18,5 +18,7 @@ The installer does not include any of this content. It downloads each part from 
 | Qwen3, Qwen3 Coder, Qwen 3.6 | Alibaba Qwen, via Ollama | Apache 2.0 |
 | gpt-oss 120B | OpenAI, via Ollama | Apache 2.0 |
 | `huihui_ai/*-abliterated` models | Community fine-tunes of Qwen and gpt-oss, via Ollama | Per the base model (Apache 2.0) |
+| aider (vibe coding) | [Aider-AI/aider](https://github.com/Aider-AI/aider) | Apache 2.0 |
+| uv (fetches Python 3.12 when needed) | [astral-sh/uv](https://github.com/astral-sh/uv) | MIT / Apache 2.0 |
 
 Map and search data are © OpenStreetMap contributors. If you show this map to other people, display the attribution.

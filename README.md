@@ -17,8 +17,9 @@ This installer downloads every part from its original public source (Kiwix, Prot
 | `ai` | Everyday models: MedGemma 27B (medical), Qwen 3.6 35B without refusals, Qwen3 4B (fast) | ~43 GB |
 | `ai-big` | gpt-oss 120B without refusals (needs a 128 GB machine) | ~87 GB |
 | `coding` | Qwen3 Coder 30B and Qwen3 Coder Next | ~69 GB |
+| `vibe` | Offline vibe coding: [aider](https://aider.chat) wired to the local coding model. Install it with `coding` | ~0.6 GB |
 
-All parts together come to about 510 GB. Run `--list` for exact sizes.
+All parts together come to about 511 GB. Run `--list` for exact sizes.
 
 ## Requirements
 
@@ -56,6 +57,17 @@ sudo bash stormproof-install.sh --check
 
 If every line says `ok` with the Wi-Fi off, the kit will work in an outage.
 
+## Vibe code offline
+
+```bash
+sudo bash stormproof-install.sh --only coding,vibe
+cd ~/my-project && vibe                 # chat in the terminal; it writes and edits the files
+vibe --browser                          # the same thing in a web page (not tested yet)
+VIBE_MODEL=qwen3-coder-next:latest vibe # use the bigger coder
+```
+
+`vibe` talks only to the AI server on your own computer. Tested Nov 7, 2026 with all internet traffic blocked: it wrote a working program from a one-line request. At startup it tries once to fetch a price list, prints a warning when that fails, and carries on.
+
 ## Where things run
 
 | Service | Address |
@@ -72,7 +84,7 @@ Phones on the same network can open the library in a browser.
 
 This is version 0.1.0. Here is what has been tested so far:
 
-- **Tested:** every download link resolves and is reachable, real library downloads pass their checksums, a re-run with nothing new does nothing, the offline check works, and archives unpack.
+- **Tested:** every download link resolves and is reachable, real library downloads pass their checksums, `vibe` installs (including on Ubuntu 26.04 with Python 3.14) and writes working code with the internet blocked, a re-run with nothing new does nothing, the offline check works, and archives unpack.
 - **Not tested end to end yet:** a full 510 GB install on a fresh machine, and the map, search and directions services.
 
 The map viewer web app and offline voice are coming in a later release.

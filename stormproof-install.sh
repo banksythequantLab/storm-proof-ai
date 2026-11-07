@@ -42,7 +42,7 @@ FAILS=0
 [ -r "$MANIFEST" ] || { echo "manifest not found: $MANIFEST"; exit 1; }
 
 # manifest rows: component  kind  name  source  bytes  post   (tab separated, # comments)
-#   kind: url | ollama | docker     post: - | extract (unpack a .tar.bz2 here, then delete the archive)
+#   kind: url | ollama | docker | app     post: - | extract (unpack a .tar.bz2 here, then delete the archive)
 rows(){ grep -v '^\s*#' "$MANIFEST" | grep -v '^\s*$'; }
 wanted(){ [ -z "$ONLY" ] && return 0; case ",$ONLY," in *",$1,"*) return 0;; esac; return 1; }
 
@@ -81,6 +81,8 @@ if [ $CHECK -eq 1 ]; then
               else bad "$c: model $n not installed"; fi ;;
       docker) if command -v docker >/dev/null && docker image inspect "$n" >/dev/null 2>&1; then ok "$c: image $n"
               else bad "$c: image $n not pulled"; fi ;;
+      app) if [ -x "$DIR/$c/venv/bin/$n" ] && [ -x "$DIR/$c/vibe" ]; then ok "$c: $n ($("$DIR/$c/venv/bin/$n" --version 2>/dev/null | head -1))"
+           else bad "$c: $n not installed"; fi ;;
     esac
   done < <(rows)
   if systemctl is-active --quiet stormproof-library 2>/dev/null; then
@@ -100,6 +102,7 @@ while IFS=$'\t' read -r c k n s b note; do wanted "$c" || continue
     url) f="$DIR/$c/$n"; [ -f "$f.done" ] && have=1 ;;
     ollama) command -v ollama >/dev/null && ollama list 2>/dev/null | awk '{print $1}' | grep -qx "$n" && have=1 ;;
     docker) command -v docker >/dev/null && docker image inspect "$n" >/dev/null 2>&1 && have=1 ;;
+    app) [ -x "$DIR/$c/venv/bin/$n" ] && have=1 ;;
   esac
   if [ $have -eq 1 ]; then echo "  have  $c/$n"; else echo "  get   $c/$n  ($(gb "$b"))"; need=$((need+b)); plan+=("$c"$'\t'"$k"$'\t'"$n"$'\t'"$s"$'\t'"$b"$'\t'"$note"); fi
 done < <(rows)
@@ -142,6 +145,54 @@ if echo "$kinds" | grep -qx docker && ! command -v docker >/dev/null; then
   say "Installing Docker (runs the directions engine)"; apt_get docker.io || exit 1
 fi
 
+# ---------------------------------------------------------------- vibe coding (aider + local coding model)
+install_vibe(){ # component app pip-spec
+  local c="$1" app="$2" spec="$3" d="$DIR/$1" py=""
+  say "$c: offline vibe coding ($spec)"
+  for v in python3.12 python3.13 python3.11 python3; do
+    command -v $v >/dev/null && $v -c 'import sys; sys.exit(0 if (3,9) <= sys.version_info[:2] <= (3,13) else 1)' && { py=$(command -v $v); break; }
+  done
+  mkdir -p "$d"
+  if [ -n "$py" ] && $py -c 'import venv, ensurepip' 2>/dev/null; then
+    $py -m venv "$d/venv" && "$d/venv/bin/pip" -q install --upgrade pip >/dev/null && "$d/venv/bin/pip" -q install "$spec" \
+      || { bad "$c: pip install of $spec failed; run again"; return; }
+  else
+    # newer Ubuntu ships Python 3.14, which aider doesn't support yet: use uv to fetch a private Python 3.12
+    if [ ! -x "$d/bin/uv" ]; then
+      echo "  getting uv (Python manager from astral.sh)..."
+      curl -fsSL https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$d/bin" UV_NO_MODIFY_PATH=1 sh >/dev/null 2>&1 \
+        || { bad "$c: could not install uv"; return; }
+    fi
+    export UV_PYTHON_INSTALL_DIR="$d/python" UV_CACHE_DIR="$d/.uv-cache"
+    "$d/bin/uv" venv -q --python 3.12 "$d/venv" && "$d/bin/uv" pip install -q --python "$d/venv/bin/python" "$spec" \
+      || { bad "$c: install of $spec failed; run again"; return; }
+    rm -rf "$d/.uv-cache"
+  fi
+  cat > "$d/model-settings.yml" <<'EOF'
+- name: ollama_chat/qwen3-coder:30b
+  extra_params: {num_ctx: 32768}
+- name: ollama_chat/qwen3-coder-next:latest
+  extra_params: {num_ctx: 32768}
+- name: ollama_chat/qwen3:4b
+  extra_params: {num_ctx: 16384}
+EOF
+  cat > "$d/vibe" <<EOF
+#!/bin/sh
+# Storm Proof AI: vibe code with a local model, no internet.
+#   vibe                  chat in the terminal, in the current folder
+#   vibe --browser        the same, in a web page
+#   VIBE_MODEL=qwen3-coder-next:latest vibe    use the bigger coder
+export OLLAMA_API_BASE=\${OLLAMA_API_BASE:-http://127.0.0.1:11434}
+export LITELLM_LOCAL_MODEL_COST_MAP=True
+exec "$d/venv/bin/$app" --model "ollama_chat/\${VIBE_MODEL:-qwen3-coder:30b}" \\
+  --model-settings-file "$d/model-settings.yml" \\
+  --no-check-update --no-show-release-notes --analytics-disable --no-show-model-warnings "\$@"
+EOF
+  chmod +x "$d/vibe"
+  [ "$(id -u)" -eq 0 ] && ln -sf "$d/vibe" /usr/local/bin/vibe
+  ok "$c: type 'vibe' in any project folder"
+}
+
 # ---------------------------------------------------------------- download
 for r in "${plan[@]}"; do IFS=$'\t' read -r c k n s b post <<<"$r"
   case "$k" in
@@ -168,6 +219,7 @@ for r in "${plan[@]}"; do IFS=$'\t' read -r c k n s b post <<<"$r"
       echo "$u" > "$out.done"; ok "$c: $n" ;;
     ollama) say "$c: AI model $n"; ollama pull "$n" && ok "$c: $n" || bad "$c: pull of $n failed; run again" ;;
     docker) say "$c: image $n"; docker pull "$n" >/dev/null && ok "$c: $n" || bad "$c: pull of $n failed; run again" ;;
+    app) install_vibe "$c" "$n" "$s" ;;
   esac
 done
 
