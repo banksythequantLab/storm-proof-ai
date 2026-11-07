@@ -1,0 +1,31 @@
+# Storm Proof AI kit manifest (sizes as of Nov 7, 2026). Tab separated:
+# component	kind	name	source	bytes	post
+# --- library: offline Wikipedia, medicine, repair and survival (Kiwix, CC BY-SA and others)
+library	url	wikipedia_en_all_maxi.zim	https://download.kiwix.org/zim/wikipedia/|wikipedia_en_all_maxi_|.zim	127418087648	-
+library	url	wikipedia_en_medicine_maxi.zim	https://download.kiwix.org/zim/wikipedia/|wikipedia_en_medicine_maxi_|.zim	1864210320	-
+library	url	mdwiki_en_all_maxi.zim	https://download.kiwix.org/zim/other/|mdwiki_en_all_maxi_|.zim	2302838768	-
+library	url	ifixit_en_all.zim	https://download.kiwix.org/zim/ifixit/|ifixit_en_all_|.zim	3570695757	-
+library	url	trueprepper.com_en_all.zim	https://download.kiwix.org/zim/other/|trueprepper.com_en_all_|.zim	1423584895	-
+library	url	zimgit-post-disaster_en.zim	https://download.kiwix.org/zim/other/|zimgit-post-disaster_en_|.zim	644665513	-
+library	url	zimgit-food-preparation_en.zim	https://download.kiwix.org/zim/other/|zimgit-food-preparation_en_|.zim	97822565	-
+library	url	zimgit-medicine_en.zim	https://download.kiwix.org/zim/other/|zimgit-medicine_en_|.zim	70179585	-
+library	url	zimgit-knots_en.zim	https://download.kiwix.org/zim/other/|zimgit-knots_en_|.zim	27945133	-
+library	url	zimgit-water_en.zim	https://download.kiwix.org/zim/other/|zimgit-water_en_|.zim	20924451	-
+# --- maps: whole-world street map (Protomaps daily build, OpenStreetMap ODbL)
+maps	url	world.pmtiles	daily|https://build.protomaps.com/|.pmtiles	139339872322	-
+# --- search: US + Canada address search (Photon, GraphHopper build of OSM data)
+search	url	photon.jar	https://github.com/komoot/photon/releases/download/1.0.1/photon-1.0.1.jar	56000000	-
+search	url	photon-db-north-america.tar.bz2	https://download1.graphhopper.com/public/north-america/photon-db-north-america-1.0-latest.tar.bz2	15638355272	extract
+# --- routing: US + Canada turn-by-turn directions (Valhalla builds ~23 GB of road tiles from these on first start)
+routing	url	custom_files/us-latest.osm.pbf	https://download.geofabrik.de/north-america/us-latest.osm.pbf	12247467331	-
+routing	url	custom_files/canada-latest.osm.pbf	https://download.geofabrik.de/north-america/canada-latest.osm.pbf	6514753096	-
+routing	docker	ghcr.io/valhalla/valhalla-scripted:latest	-	1000000000	-
+# --- ai: the everyday models (medical, general without refusals, and a small fast one)
+ai	ollama	medgemma:27b	-	17000000000	-
+ai	ollama	huihui_ai/qwen3.6-abliterated:35b-a3b	-	23000000000	-
+ai	ollama	qwen3:4b	-	2500000000	-
+# --- ai-big: the 120B model (needs a 128 GB machine)
+ai-big	ollama	huihui_ai/gpt-oss-abliterated:120b	-	87000000000	-
+# --- coding: offline coding helpers
+coding	ollama	qwen3-coder:30b	-	18000000000	-
+coding	ollama	qwen3-coder-next:latest	-	51000000000	-
