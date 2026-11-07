@@ -66,7 +66,7 @@ resolve(){
 
 if [ $LIST -eq 1 ]; then
   printf '%-10s %-8s %-44s %10s\n' COMPONENT KIND NAME SIZE
-  tot=0; while IFS=$'\t' read -r c k n s b note; do
+  tot=0; while IFS=$'\t' read -r c k n s b note; do wanted "$c" || continue
     printf '%-10s %-8s %-44s %10s\n' "$c" "$k" "$n" "$(gb "$b")"; tot=$((tot+b)); done < <(rows)
   echo "total: $(gb $tot)"; exit 0
 fi
