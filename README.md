@@ -10,13 +10,14 @@ This installer downloads every part from its original public source (Kiwix, Prot
 
 | Part | What it is | Download |
 |---|---|---|
-| `library` | Wikipedia (full, with pictures), WikiMed and MDWiki medical encyclopedias, iFixit repair guides, and survival guides for water, food, knots and post-disaster | ~139 GB |
+| `library` | Wikipedia (full, with pictures), WikiMed and MDWiki medical encyclopedias, and survival guides for water, food, knots and post-disaster | ~139 GB |
 | `maps` | Street-level map of the whole world (Protomaps daily build) | ~139 GB |
 | `search` | US and Canada address search (Photon) | ~16 GB download, ~24 GB unpacked |
 | `routing` | US and Canada turn-by-turn directions (Valhalla). It builds ~23 GB of road tiles on first start, which takes several hours | ~19 GB |
-| `ai` | Everyday models: MedGemma 27B (medical), Qwen 3.6 35B without refusals, Qwen3 4B (fast) | ~43 GB |
+| `ai` | Everyday models: Qwen 3.6 35B without refusals and Qwen3 4B (fast) | ~26 GB |
 | `ai-big` | gpt-oss 120B without refusals (needs a 128 GB machine) | ~87 GB |
 | `coding` | Qwen3 Coder 30B and Qwen3 Coder Next | ~69 GB |
+| `extras` | iFixit repair guides and the MedGemma 27B medical model. Loaded drives ship without these for licensing reasons; this adds them free | ~21 GB |
 | `vibe` | Offline vibe coding: [aider](https://aider.chat) wired to the local coding model. Install it with `coding` | ~0.6 GB |
 
 All parts together come to about 511 GB. Run `--list` for exact sizes.
@@ -46,6 +47,14 @@ Options:
 - `--yes` skips the confirmation prompt.
 
 If a download stops, run the same command again and it picks up where it left off. Library files are checked against Kiwix's published SHA-256 checksums. The installer won't start if your drive doesn't have room for what you picked.
+
+## Bought a loaded drive?
+
+Drives from the Storm Proof store come with everything except `extras`. To add the iFixit guides and the MedGemma medical model free, plug in to the internet once and run:
+
+```bash
+sudo bash stormproof-install.sh --only extras
+```
 
 ## Test it before you need it
 

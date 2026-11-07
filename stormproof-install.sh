@@ -8,7 +8,9 @@
 #   sudo bash stormproof-install.sh                        install everything in the manifest
 #   sudo bash stormproof-install.sh --check                offline self-test of what is installed
 #
-# Options: --dir DIR (default /opt/stormproof)  --manifest FILE  --no-services  --yes
+# Options: --dir DIR (default /opt/stormproof)  --manifest FILE  --skip a,b  --no-services  --yes
+# Loaded drives ship without the "extras" part (iFixit guides, MedGemma) for licensing reasons:
+#   sudo bash stormproof-install.sh --only extras      adds them free from the original sources
 # Downloads resume if interrupted: just run the same command again.
 set -uo pipefail
 
@@ -16,13 +18,14 @@ VERSION=0.1.0
 DIR=/opt/stormproof
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MANIFEST="$HERE/stormproof-manifest.tsv"
-ONLY=""; DRY=0; CHECK=0; LIST=0; SERVICES=1; YES=0
+ONLY=""; SKIP=""; DRY=0; CHECK=0; LIST=0; SERVICES=1; YES=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --dir) DIR="$2"; shift ;;
     --manifest) MANIFEST="$2"; shift ;;
     --only) ONLY="$2"; shift ;;
+    --skip) SKIP="$2"; shift ;;
     --dry-run) DRY=1 ;;
     --check) CHECK=1 ;;
     --list) LIST=1 ;;
@@ -44,7 +47,7 @@ FAILS=0
 # manifest rows: component  kind  name  source  bytes  post   (tab separated, # comments)
 #   kind: url | ollama | docker | app     post: - | extract (unpack a .tar.bz2 here, then delete the archive)
 rows(){ grep -v '^\s*#' "$MANIFEST" | grep -v '^\s*$'; }
-wanted(){ [ -z "$ONLY" ] && return 0; case ",$ONLY," in *",$1,"*) return 0;; esac; return 1; }
+wanted(){ case ",$SKIP," in *",$1,"*) return 1;; esac; [ -z "$ONLY" ] && return 0; case ",$ONLY," in *",$1,"*) return 0;; esac; return 1; }
 
 # "@latest" sources: <index url>|<file prefix>|<suffix>  -> newest matching file in that directory listing
 resolve(){
@@ -240,10 +243,10 @@ EOF
 IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 if [ $SERVICES -eq 1 ] && command -v systemctl >/dev/null && [ "$(id -u)" -eq 0 ]; then
   # library: kiwix-serve on :8090
-  if ls "$DIR"/library/*.zim >/dev/null 2>&1; then
+  if ls "$DIR"/library/*.zim "$DIR"/extras/*.zim >/dev/null 2>&1; then
     command -v kiwix-serve >/dev/null || { say "Installing kiwix-tools (library server)"; apt_get kiwix-tools || true; }
     if command -v kiwix-serve >/dev/null; then
-      unit stormproof-library "Storm Proof AI offline library" "/bin/sh -c 'exec $(command -v kiwix-serve) --port 8090 $DIR/library/*.zim'" \
+      unit stormproof-library "Storm Proof AI offline library" "/bin/sh -c 'exec $(command -v kiwix-serve) --port 8090 \$\$(ls $DIR/library/*.zim $DIR/extras/*.zim 2>/dev/null)'" \
         && ok "library: http://$IP:8090" || bad "library service did not start"
     fi
   fi

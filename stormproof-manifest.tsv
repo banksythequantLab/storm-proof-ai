@@ -4,7 +4,6 @@
 library	url	wikipedia_en_all_maxi.zim	https://download.kiwix.org/zim/wikipedia/|wikipedia_en_all_maxi_|.zim	127418087648	-
 library	url	wikipedia_en_medicine_maxi.zim	https://download.kiwix.org/zim/wikipedia/|wikipedia_en_medicine_maxi_|.zim	1864210320	-
 library	url	mdwiki_en_all_maxi.zim	https://download.kiwix.org/zim/other/|mdwiki_en_all_maxi_|.zim	2302838768	-
-library	url	ifixit_en_all.zim	https://download.kiwix.org/zim/ifixit/|ifixit_en_all_|.zim	3570695757	-
 library	url	trueprepper.com_en_all.zim	https://download.kiwix.org/zim/other/|trueprepper.com_en_all_|.zim	1423584895	-
 library	url	zimgit-post-disaster_en.zim	https://download.kiwix.org/zim/other/|zimgit-post-disaster_en_|.zim	644665513	-
 library	url	zimgit-food-preparation_en.zim	https://download.kiwix.org/zim/other/|zimgit-food-preparation_en_|.zim	97822565	-
@@ -21,7 +20,6 @@ routing	url	custom_files/us-latest.osm.pbf	https://download.geofabrik.de/north-a
 routing	url	custom_files/canada-latest.osm.pbf	https://download.geofabrik.de/north-america/canada-latest.osm.pbf	6514753096	-
 routing	docker	ghcr.io/valhalla/valhalla-scripted:latest	-	1000000000	-
 # --- ai: the everyday models (medical, general without refusals, and a small fast one)
-ai	ollama	medgemma:27b	-	17000000000	-
 ai	ollama	huihui_ai/qwen3.6-abliterated:35b-a3b	-	23000000000	-
 ai	ollama	qwen3:4b	-	2500000000	-
 # --- ai-big: the 120B model (needs a 128 GB machine)
@@ -31,3 +29,6 @@ coding	ollama	qwen3-coder:30b	-	18000000000	-
 coding	ollama	qwen3-coder-next:latest	-	51000000000	-
 # --- vibe: offline vibe coding (aider, Apache 2.0) using the local coding models
 vibe	app	aider	aider-chat	600000000	-
+# --- extras: free add-ons not preloaded on paid drives (iFixit is CC BY-NC-SA; MedGemma has its own Google terms)
+extras	url	ifixit_en_all.zim	https://download.kiwix.org/zim/ifixit/|ifixit_en_all_|.zim	3570695757	-
+extras	ollama	medgemma:27b	-	17000000000	-
