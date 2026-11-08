@@ -77,7 +77,8 @@ if [ $CHECK -eq 1 ]; then
   while IFS=$'\t' read -r c k n s b note; do wanted "$c" || continue
     case "$k" in
       url) f="$DIR/$c/$n"
-           if [ -f "$f.done" ] && [ "$note" = extract ]; then ok "$c: $n (unpacked)"
+           if [ "$c" = routing ] && [ -s "$DIR/routing/custom_files/valhalla_tiles.tar" ]; then ok "$c: prebuilt road tiles"
+           elif [ -f "$f.done" ] && [ "$note" = extract ]; then ok "$c: $n (unpacked)"
            elif [ -f "$f.done" ] && [ "$(stat -c %s "$f" 2>/dev/null || echo 0)" -ge $((b * 9 / 10)) ]; then ok "$c: $n ($(gb "$(stat -c %s "$f")"))"
            else bad "$c: $n missing or incomplete"; fi ;;
       ollama) if command -v ollama >/dev/null && ollama list 2>/dev/null | awk '{print $1}' | grep -qx "$n"; then ok "$c: model $n"
@@ -96,14 +97,22 @@ if [ $CHECK -eq 1 ]; then
   exit $FAILS
 fi
 
+# models shipped on a loaded drive live in $DIR/ollama/models (ollama's own layout)
+model_on_dir(){ local n="$1" name tag ns base; name="${n%%:*}"; tag="${n#*:}"; [ "$tag" = "$n" ] && tag=latest
+  case "$name" in */*) ns="${name%%/*}"; base="${name#*/}";; *) ns=library; base="$name";; esac
+  [ -f "$DIR/ollama/models/manifests/registry.ollama.ai/$ns/$base/$tag" ]; }
+TILES="$DIR/routing/custom_files/valhalla_tiles.tar"
+
 # ---------------------------------------------------------------- plan
 say "Storm Proof AI installer $VERSION -> $DIR"
 need=0; plan=()
 while IFS=$'\t' read -r c k n s b note; do wanted "$c" || continue
   have=0
   case "$k" in
-    url) f="$DIR/$c/$n"; [ -f "$f.done" ] && have=1 ;;
-    ollama) command -v ollama >/dev/null && ollama list 2>/dev/null | awk '{print $1}' | grep -qx "$n" && have=1 ;;
+    url) f="$DIR/$c/$n"; [ -f "$f.done" ] && have=1
+         [ "$c" = routing ] && [ -s "$TILES" ] && have=1 ;;   # prebuilt road tiles on a loaded drive
+    ollama) model_on_dir "$n" && have=1
+            command -v ollama >/dev/null && ollama list 2>/dev/null | awk '{print $1}' | grep -qx "$n" && have=1 ;;
     docker) command -v docker >/dev/null && docker image inspect "$n" >/dev/null 2>&1 && have=1 ;;
     app) [ -x "$DIR/$c/venv/bin/$n" ] && have=1 ;;
   esac
@@ -139,6 +148,48 @@ fi
 apt_get(){ command -v apt-get >/dev/null || { echo "apt-get not found: install '$*' yourself"; return 1; }
   DEBIAN_FRONTEND=noninteractive apt-get install -y "$@" >/dev/null; }
 command -v curl >/dev/null || apt_get curl
+
+# offline app bundles shipped on loaded drives (apps/): used when the internet is down
+offline_apps(){
+  if ! command -v kiwix-serve >/dev/null; then
+    t=$(ls "$DIR"/apps/kiwix-tools_linux-x86_64*.tar.gz 2>/dev/null | head -1)
+    [ -n "$t" ] && { say "Installing kiwix-tools from the drive"; tar -xzf "$t" -C /tmp && cp /tmp/kiwix-tools_linux-x86_64*/kiwix-* /usr/local/bin/ && ok "kiwix-tools (offline)"; }
+  fi
+  if ! command -v ollama >/dev/null; then
+    t=$(ls "$DIR"/apps/ollama-linux-amd64.tar.zst 2>/dev/null | head -1)
+    if [ -n "$t" ] && command -v zstd >/dev/null; then
+      say "Installing Ollama from the drive"
+      tar -C /usr/local --zstd -xf "$t" || { bad "Ollama unpack failed"; return; }
+      r="$DIR/apps/ollama-linux-amd64-rocm.tar.zst"
+      [ -e /dev/kfd ] && [ -f "$r" ] && { echo "  adding AMD GPU support..."; tar -C /usr/local --zstd -xf "$r"; }
+      id ollama >/dev/null 2>&1 || useradd -r -s /bin/false -U -m -d /usr/share/ollama ollama 2>/dev/null
+      usermod -aG render,video ollama 2>/dev/null
+      cat > /etc/systemd/system/ollama.service <<EOF
+[Unit]
+Description=Ollama Service
+After=network-online.target
+[Service]
+ExecStart=/usr/local/bin/ollama serve
+User=ollama
+Group=ollama
+Restart=always
+[Install]
+WantedBy=default.target
+EOF
+      systemctl daemon-reload && systemctl enable --now ollama >/dev/null 2>&1 && ok "ollama (offline)"
+    fi
+  fi
+}
+[ "$(id -u)" -eq 0 ] && [ -d "$DIR/apps" ] && offline_apps
+# AI models on the drive: point Ollama at them (installs Ollama online if the drive has no bundle)
+if [ "$(id -u)" -eq 0 ] && [ -d "$DIR/ollama/models/manifests" ]; then
+  command -v ollama >/dev/null || { say "Installing Ollama (the AI model server) from ollama.com"; curl -fsSL https://ollama.com/install.sh | sh || bad "Ollama install failed"; }
+  if command -v ollama >/dev/null && command -v systemctl >/dev/null; then
+    mkdir -p /etc/systemd/system/ollama.service.d
+    printf '[Service]\nEnvironment=OLLAMA_MODELS=%s\n' "$DIR/ollama/models" > /etc/systemd/system/ollama.service.d/stormproof.conf
+    systemctl daemon-reload && systemctl restart ollama && ok "AI models served from $DIR/ollama/models"
+  fi
+fi
 kinds=$(printf '%s\n' "${plan[@]}" | cut -f2 | sort -u)
 if echo "$kinds" | grep -qx ollama && ! command -v ollama >/dev/null; then
   say "Installing Ollama (the AI model server) from ollama.com"
@@ -273,7 +324,8 @@ EOF
       && ok "address search: 127.0.0.1:2322" || bad "address search did not start"
   fi
   # directions: valhalla builds its road tiles from the downloaded OSM files on first start (several hours)
-  if ls "$DIR"/routing/custom_files/*.osm.pbf >/dev/null 2>&1 && command -v docker >/dev/null; then
+  command -v docker >/dev/null || { [ -s "$TILES" ] && { say "Installing Docker (runs the directions engine)"; apt_get docker.io || true; }; }
+  if { ls "$DIR"/routing/custom_files/*.osm.pbf >/dev/null 2>&1 || [ -s "$TILES" ]; } && command -v docker >/dev/null; then
     docker inspect stormproof-routing >/dev/null 2>&1 || docker run -d --name stormproof-routing --restart unless-stopped \
       -p 127.0.0.1:8002:8002 -v "$DIR/routing/custom_files:/custom_files" \
       -e server_threads=$(nproc) -e build_elevation=False -e build_transit=False -e build_admins=True -e build_time_zones=True \
